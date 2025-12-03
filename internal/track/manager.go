@@ -203,7 +203,7 @@ func (m *Manager) DownloadLyric(ctx context.Context, song structs.Song) (string,
 		if err := m.ensureDirExists(m.lyricDir); err != nil {
 			return "", err
 		}
-		if err = os.WriteFile(filePath, []byte(lrc.Original), 0644); err != nil {
+		if err = os.WriteFile(filePath, []byte(lrc.Original), 0o644); err != nil {
 			return "", err
 		}
 		return filePath, nil
@@ -315,6 +315,11 @@ func (m *Manager) backgroundCache(ctx context.Context, source PlayableSource) {
 		if err != nil {
 			slog.Error("Background cache: put failed", "songId", source.Id, "error", err)
 		} else {
+			key := fmt.Sprintf("%d-%d.%s", source.Song.Id, priority[m.quality], source.Info.MusicType)
+			filePath := filepath.Join(m.cacher.musicDir, key)
+			if err := m.tagger.SetSongTag(filePath, source.Song); err != nil {
+				slog.Warn("Song persisted from cache, but failed to set metadata.", "file", filePath, "error", err)
+			}
 			slog.Debug("Background caching succeeded", "songId", source.Id)
 		}
 		return nil, err
@@ -343,9 +348,9 @@ func (m *Manager) persistCachedSource(ctx context.Context, source PlayableSource
 	if err := m.persistStream(job); err != nil {
 		return "", err
 	}
-	if err := m.tagger.SetSongTag(finalFilePath, source.Song); err != nil {
-		slog.Warn("Song persisted from cache, but failed to set metadata.", "file", finalFilePath, "error", err)
-	}
+	// if err := m.tagger.SetSongTag(finalFilePath, source.Song); err != nil {
+	// 	slog.Warn("Song persisted from cache, but failed to set metadata.", "file", finalFilePath, "error", err)
+	// }
 	return finalFilePath, nil
 }
 
