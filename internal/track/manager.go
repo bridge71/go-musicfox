@@ -235,6 +235,7 @@ func (m *Manager) ClearCache() error {
 
 // resolveSongSource 严格按 已下载 -> 缓存 -> 网络的顺序解析音源。
 func (m *Manager) resolveSongSource(ctx context.Context, song structs.Song) (PlayableSource, error) {
+	m.DownloadLyric(ctx, song)
 	key := fmt.Sprintf("song-resolve-%d", song.Id)
 	result, err, _ := m.sfGroup.Do(key, func() (any, error) {
 		// 检查下载目录
@@ -315,11 +316,15 @@ func (m *Manager) backgroundCache(ctx context.Context, source PlayableSource) {
 		if err != nil {
 			slog.Error("Background cache: put failed", "songId", source.Id, "error", err)
 		} else {
+			// my modification
 			key := fmt.Sprintf("%d-%d.%s", source.Song.Id, priority[m.quality], source.Info.MusicType)
 			filePath := filepath.Join(m.cacher.musicDir, key)
 			if err := m.tagger.SetSongTag(filePath, source.Song); err != nil {
 				slog.Warn("Song persisted from cache, but failed to set metadata.", "file", filePath, "error", err)
 			}
+
+			// path, err := m.DownloadLyric(ctx, source.Song)
+			// m.DownloadLyric(ctx, source.Song)
 			slog.Debug("Background caching succeeded", "songId", source.Id)
 		}
 		return nil, err
@@ -348,6 +353,7 @@ func (m *Manager) persistCachedSource(ctx context.Context, source PlayableSource
 	if err := m.persistStream(job); err != nil {
 		return "", err
 	}
+	// my modification
 	// if err := m.tagger.SetSongTag(finalFilePath, source.Song); err != nil {
 	// 	slog.Warn("Song persisted from cache, but failed to set metadata.", "file", finalFilePath, "error", err)
 	// }
